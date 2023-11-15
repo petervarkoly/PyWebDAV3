@@ -27,6 +27,7 @@ except ImportError:
 
 from pywebdav.server.fileauth import DAVAuthHandler
 from pywebdav.server.mysqlauth import MySQLAuthHandler
+from pywebdav.server.ldapauth  import LdapAuthHandler
 from pywebdav.server.fshandler import FilesystemHandler
 from pywebdav.server.daemonize import startstop
 
@@ -133,6 +134,9 @@ Parameters:
     -m, --mysql     Pass this parameter if you want MySQL based authentication.
                     If you want to use MySQL then the usage of a configuration
                     file is mandatory.
+    -L, --ldap      Pass this parameter if you want LDAP based authentication.
+                    If you want to use LDAP then the usage of a configuration
+                    file is mandatory.
     -J, --nolock    Deactivate LOCK and UNLOCK mode (WebDAV Version 2).
     -M, --nomime    Deactivate mimetype sniffing. Sniffing is based on magic numbers
                     detection but can be slow under heavy load. If you are experiencing
@@ -185,6 +189,7 @@ def run():
     daemonaction = 'start'
     counter = 0
     mysql = False
+    ldap = False
     lockemulation = True
     http_response_use_iterator = True
     chunked_http_response = True
@@ -195,9 +200,9 @@ def run():
 
     # parse commandline
     try:
-        opts, args = getopt.getopt(sys.argv[1:], 'P:D:H:d:u:p:nvhmJi:c:Ml:TB:',
+        opts, args = getopt.getopt(sys.argv[1:], 'P:D:H:d:u:p:nvhmLJi:c:Ml:TB:',
                 ['host=', 'port=', 'directory=', 'user=', 'password=',
-                 'daemon=', 'noauth', 'help', 'verbose', 'mysql', 
+                 'daemon=', 'noauth', 'help', 'verbose', 'mysql','ldap',
                  'icounter=', 'config=', 'nolock', 'nomime', 'loglevel', 'noiter',
                  'baseurl='])
     except getopt.GetoptError as e:
@@ -211,6 +216,9 @@ def run():
 
         if o in ['-m', '--mysql']:
             mysql = True
+
+        if o in ['-L', '--ldap']:
+            ldap = True
 
         if o in ['-M', '--nomime']:
             mimecheck = False
@@ -328,6 +336,10 @@ def run():
         log.error('You can only use MySQL with configuration file!')
         sys.exit(3)
 
+    if ldap == True and configfile == '':
+        log.error('You can only use LDAP with configuration file!')
+        sys.exit(3)
+
     if daemonaction != 'stop':
         log.info('Starting up PyWebDAV server (version %s)' % __version__)
     else:
@@ -368,6 +380,8 @@ def run():
     handler = DAVAuthHandler
     if mysql == True:
         handler = MySQLAuthHandler
+    if ldap == True:
+        handler = LdapAuthHandler
 
     # injecting options
     handler._config = conf
